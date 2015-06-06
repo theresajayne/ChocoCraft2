@@ -17,18 +17,23 @@ import java.util.List;
  */
 public class ChocoboSpawner {//TODO This whole thing was adapted from the ancient code, could prob do with a whole new system at some point
 
+	static final int MAX_ATTEMPTS = 10;
+	static final int INNER_SPAWN_RADIUS = 32;
+	static final int NORMAL_OUTER_SPAWN_RADIUS = 64;
+	static final int NETHER_OUTER_SPAWN_RADIUS = 48;
+
+
 	public static void doChocoboSpawning(World world, BlockPos pos) {
-		int maxAttempts = 10;
 
 		if(!RandomHelper.getChanceResult(50))//TODO config options
 			return;
 
-		int outerSpawnRadius = 64;
-		int innerSpawnRadius = 32;
+		int outerSpawnRadius = NORMAL_OUTER_SPAWN_RADIUS;
+
 
 		if(WorldHelper.isHellWorld(world))
 		{
-			outerSpawnRadius = 48;
+			outerSpawnRadius = NETHER_OUTER_SPAWN_RADIUS;
 		}
 
 		// check up to maxTries random positions for correct spawn biome
@@ -36,9 +41,9 @@ public class ChocoboSpawner {//TODO This whole thing was adapted from the ancien
 		int randDeltaZ = 0;
 		boolean canSpawnHere = false;
 
-		for(int i = 0; i < maxAttempts; i++) {
-			randDeltaX = world.rand.nextInt(outerSpawnRadius) + innerSpawnRadius;
-			randDeltaZ = world.rand.nextInt(outerSpawnRadius) + innerSpawnRadius;
+		for(int i = 0; i < MAX_ATTEMPTS; i++) {
+			randDeltaX = world.rand.nextInt(outerSpawnRadius) + INNER_SPAWN_RADIUS;
+			randDeltaZ = world.rand.nextInt(outerSpawnRadius) + INNER_SPAWN_RADIUS;
 			//select random quadrant
 			if(world.rand.nextBoolean())
 				randDeltaX *= -1;
@@ -50,7 +55,7 @@ public class ChocoboSpawner {//TODO This whole thing was adapted from the ancien
 			else
 				canSpawnHere = canChocoboSpawnInBiome(world, pos.add(randDeltaX, 0, randDeltaZ));//Normal chocobos
 
-			if(isOtherPlayerNear(world, pos.add(randDeltaX, 0, randDeltaZ), innerSpawnRadius / 2))
+			if(isOtherPlayerNear(world, pos.add(randDeltaX, 0, randDeltaZ), INNER_SPAWN_RADIUS / 2))
 				canSpawnHere = false;
 			if(canSpawnHere)
 				break;//Position found
@@ -76,7 +81,7 @@ public class ChocoboSpawner {//TODO This whole thing was adapted from the ancien
 		if(groupSizeDelta > 0)
 			randomGroupSize += world.rand.nextInt(groupSizeDelta);
 
-		for(int i = 0; i < maxAttempts; i++) {
+		for(int i = 0; i < MAX_ATTEMPTS; i++) {
 			BlockPos chocoPos = pos.add(randDeltaX + world.rand.nextInt(6), 0, randDeltaZ + world.rand.nextInt(6));
 			if(WorldHelper.isHellWorld(world))
 				chocoPos = WorldHelper.getFirstSolidWithAirAbove(world, chocoPos);
@@ -120,22 +125,23 @@ public class ChocoboSpawner {//TODO This whole thing was adapted from the ancien
 	}
 
 	private static boolean canChocoboSpawnAtLocation(World world, BlockPos pos) {
-		if(!WorldHelper.isNormalCubesAround(world, pos.down()))
-			return false;
-
-		if(WorldHelper.isNormalCubesAround(world, pos))
-			return false;
-
-		if(WorldHelper.isBlockAtPositionLiquid(world, pos))
-			return false;
-
-		if(WorldHelper.isNormalCubesAround(world, pos.up()))
-			return false;
-
-		if(!WorldHelper.isNormalCubesAround(world, pos.up().up()))
+		int isValid = 0;
+		if(!WorldHelper.isNormalCubesAround(world,pos.up()) && !WorldHelper.isNormalCubesAround(world,pos.up()))
+		{
+			//Clear up
+			isValid += 2;
+		}
+		if(WorldHelper.isNormalCubesAround(world,pos.down()) && !WorldHelper.isBlockAtPositionLiquid(world,pos))
+		{
+			//Clear Down
+			isValid += 2;
+		}
+		if(isValid == 4)
+		{
+			System.out.println("Spawned Chocobo");
 			return true;
-
-		return true;
+		}
+		return false;
 	}
 
 	private static boolean canChocoboSpawnInBiome(World world, BlockPos pos) {
